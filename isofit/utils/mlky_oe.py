@@ -8,6 +8,8 @@ from mlky import Config
 Config._opts.convertListTypes = False
 Config.Null._warn = False
 
+# Push as a new branch from lut
+
 
 def getSizeGDAL(file):
     """ """
@@ -17,12 +19,28 @@ def getSizeGDAL(file):
     return data.RasterXSize, data.RasterYSize
 
 
+def setup_outputs():
+    "Setup output directory structure"
+    import template_construction
+
+    pn = PathNames(Config)  # creates output names
+    pn.mkdirs()  # creates outputs
+    pn.stage_files()  # copies some files if needed
+
+    if Config.processors.type_specific_inversion_parameters:
+        pn.add_surface_subs_files()
+
+    return pn
+
+
 def apply_oe():
     """ """
+    setup_outputs()
+
     if len(Config.num_neighbors) > 1:
         if Config.empirical_line:
             Logger.error(
-                "Empircal Line algorithm cannot be used with greater than 1 num_neighbors"
+                "Empirical Line algorithm cannot be used with greater than 1 num_neighbors"
             )
             return
 
