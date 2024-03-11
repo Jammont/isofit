@@ -151,7 +151,10 @@ class Isofit:
 
         # fm_id = ray.put(fm)
 
-        params = ray.put([self.config, fm, self.loglevel, self.logfile, n_workers])
+        params = [
+            ray.put(obj)
+            for obj in [self.config, fm, self.loglevel, self.logfile, n_workers]
+        ]
         self.workers = [Worker.remote(*params, n) for n in range(n_workers)]
 
         # remote_worker = ray.remote(Worker)
