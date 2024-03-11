@@ -202,7 +202,7 @@ class Isofit:
         )
 
 
-@ray.remote
+@ray.remote(num_cpus=1)
 class Worker(object):
     def __init__(
         self,
