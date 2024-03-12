@@ -236,6 +236,7 @@ def atm_interpolation(
     logfile: str = None,
     n_cores: int = -1,
     gaussian_smoothing_sigma: list = None,
+    ray_autoshutdown: bool = True
 ) -> None:
     """
     Perform an empirical line interpolation and gaussian smoothing to atmospheric parameters.
@@ -252,6 +253,7 @@ def atm_interpolation(
         logfile:                  logging file
         n_cores:                  number of cores to run on
         gaussian_smoothing_sigma: sigma value to apply to gaussian smoothing of atmospheric parameters
+        ray_autoshutdown:         Enables calling ray.shutdown() on object deletion
     Returns:
         None
     """
@@ -366,4 +368,5 @@ def atm_interpolation(
 
     atm_img = atm_img.transpose((0, 2, 1))
     write_bil_chunk(atm_img, output_atm_file, 0, atm_img.shape)
-    ray.shutdown()
+    if ray_autoshutdown:
+        ray.shutdown()

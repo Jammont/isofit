@@ -587,9 +587,10 @@ def apply_oe(args):
 
         # Run modtran retrieval
         logging.info("Running ISOFIT with full LUT")
-        retrieval_full = isofit.Isofit(
-            paths.isofit_full_config_path, level="INFO", logfile=args.log_file
-        )
+        full_args = {'level':"INFO", 'logfile':args.log_file}
+        if use_superpixels and (args.empirical_line or args.analytical_line):
+            full_args['autoshutdown']  = False
+        retrieval_full = isofit.Isofit(paths.isofit_full_config_path, **full_args)
         retrieval_full.run()
         del retrieval_full
 

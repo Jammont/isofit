@@ -131,6 +131,7 @@ def analytical_line(
             atm_band_names=fm.RT.statevec_names,
             nneighbors=n_atm_neighbors,
             gaussian_smoothing_sigma=smoothing_sigma,
+            ray_autoshutdown=False,
         )
 
     rdn_ds = envi.open(envi_header(rdn_file))
@@ -180,16 +181,16 @@ def analytical_line(
         n_workers = multiprocessing.cpu_count()
 
     wargs = [
-        config,
+        ray.put(config),
         ray.put(fm),
-        atm_file,
-        analytical_state_file,
-        analytical_state_unc_file,
-        rdn_file,
-        loc_file,
-        obs_file,
-        loglevel,
-        logfile,
+        ray.put(atm_file),
+        ray.put(analytical_state_file),
+        ray.put(analytical_state_unc_file),
+        ray.put(rdn_file),
+        ray.put(loc_file),
+        ray.put(obs_file),
+        ray.put(loglevel),
+        ray.put(logfile),
     ]
     workers = ray.util.ActorPool([Worker.remote(*wargs) for _ in range(n_workers)])
 
