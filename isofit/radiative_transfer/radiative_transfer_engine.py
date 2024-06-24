@@ -40,6 +40,17 @@ from isofit.radiative_transfer import luts
 Logger = logging.getLogger(__file__)
 
 
+@ray.remote
+def interpolate(luts, point: np.array) -> dict:
+    """
+    Compiles the results of the interpolators for a given point
+    """
+    # Run the interpolators
+    value = {key: lut(point) for key, lut in luts.items()}
+
+    return value
+
+
 class RadiativeTransferEngine:
     # Allows engines to outright disable the parallelized sims if they do nothing
     _disable_makeSim = False
@@ -378,7 +389,7 @@ class RadiativeTransferEngine:
             # TODO: raise AttributeError("Havent implemented this yet....should have a default read from template")
 
     # TODO: change this name
-    def get(self, x_RT: np.array, geom: Geometry) -> dict:
+    def get(self, x_RT: np.array, ind_sv, h2oList, geom: Geometry) -> dict:
         """
         Retrieves the interpolation values for a given point
 
@@ -394,12 +405,19 @@ class RadiativeTransferEngine:
         self.interpolate(point): dict
             ...
         """
-        point = np.zeros(self.n_point)
+        luts = ray.put(self.luts)
+        for h2o in h2oList:
+            x_RT[ind_sv] = h2o
 
-        point[self.indices.x_RT] = x_RT
-        for i, key in self.indices.geom.items():
-            point[i] = getattr(geom, key)
+            point = np.zeros(self.n_point)
 
+            point[self.indices.x_RT] = x_RT
+            for i, key in self.indices.geom.items():
+                point[i] = getattr(geom, key)
+
+            jobs.append(interpolate.remote(luts, point))
+
+        return ray.get(jobs)
         return self.interpolate(point)
 
     def interpolate(self, point: np.array) -> dict:

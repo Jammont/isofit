@@ -100,11 +100,14 @@ def heuristic_atmosphere(
         # calculating the band ratio that we would see if this were the
         # atmospheric H2O content.  It assumes that defaults for all other
         # atmospheric parameters (such as aerosol, if it is there).
-        for h2o in my_RT.lut_grid[h2oname]:
+        rhis = RT.get_shared_rtm_quantities(x_RT, ind_sv, my_RT.lut_grid[h2oname], geom)
+
+        for i, h2o in enumerate(my_RT.lut_grid[h2oname]):
             # Get Atmospheric terms at high spectral resolution
             x_RT_2 = x_RT.copy()
             x_RT_2[ind_sv] = h2o
-            rhi = RT.get_shared_rtm_quantities(x_RT_2, geom)
+            # rhi = RT.get_shared_rtm_quantities(x_RT_2, geom)
+            rhi = rhis[i]
             rhoatm = instrument.sample(x_instrument, RT.wl, rhi["rhoatm"])
             transm = instrument.sample(
                 x_instrument, RT.wl, rhi["transm_down_dir"] + rhi["transm_down_dif"]

@@ -147,13 +147,13 @@ class RadiativeTransfer:
         """Pull the priors from each of the individual RTs."""
         return np.diagflat(np.power(np.array(self.prior_sigma), 2))
 
-    def get_shared_rtm_quantities(self, x_RT, geom):
+    def get_shared_rtm_quantities(self, x_RT, ind_sv, h2o, geom):
         """Return only the set of RTM quantities (transup, sphalb, etc.) that are contained
         in all RT engines.
         """
         ret = []
         for RT in self.rt_engines:
-            ret.append(RT.get(x_RT, geom))
+            ret.append(RT.get(x_RT, ind_sv, h2o, geom))
 
         return self.pack_arrays(ret)
 
