@@ -406,6 +406,7 @@ class RadiativeTransferEngine:
             ...
         """
         luts = ray.put(self.luts)
+        jobs = []
         for h2o in h2oList:
             x_RT[ind_sv] = h2o
 
