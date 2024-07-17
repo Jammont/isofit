@@ -249,9 +249,9 @@ class VectorInterpolator:
 
         for i, di in enumerate(deltas[::-1]):
             # Eliminate those indexes where we are outside grid range or exactly on the grid point
-            if x[-i] <= grid[-i][-1]:
+            if x[-i] <= self.gridtuples[-i][-1]:
                 cube = cube[:, 1]
-            elif x[-i] >= grid[-i][0]:
+            elif x[-i] >= self.gridtuples[-i][0]:
                 cube = cube[:, 0]
             # Otherwise eliminate index by linear interpolation
             else:
