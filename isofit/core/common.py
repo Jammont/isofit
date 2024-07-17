@@ -198,7 +198,7 @@ class VectorInterpolator:
 
         return res
 
-    def _multilinear_grid_old(self, points):
+    def _multilinear_grid(self, points):
         """
         Jouni's implementation
 
@@ -260,7 +260,7 @@ class VectorInterpolator:
                 cube[:, 0] += cube[:, 1]
                 cube = cube[:, 0]
 
-        return cube
+        return cube.T
 
     def __call__(self, *args, **kwargs):
         """
