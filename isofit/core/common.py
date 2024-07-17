@@ -198,7 +198,71 @@ class VectorInterpolator:
 
         return res
 
-    def _multilinear_grid(self, points):
+    def _multilinear_grid_old(self, points):
+        """
+        Jouni's implementation
+
+        Args:
+            point: The point being interpolated. If at the limit, the extremal value in
+                    the grid is returned.
+
+        Returns:
+            cube: np.ndarray
+        """
+        x = np.zeros((len(points) + np.sum(self.lut_interp_types != "n")))
+        offset_count = 0
+        for i in range(len(points)):
+            if self.lut_interp_types[i] == "n":
+                x[i + offset_count] = points[i]
+            elif self.lut_interp_types[i] == "r":
+                x[i + offset_count] = np.cos(points[i])
+                x[i + 1 + offset_count] = np.sin(points[i])
+                offset_count += 1
+            elif self.lut_interp_types[i] == "d":
+                x[i + offset_count] = np.cos(np.deg2rad(points[i]))
+                x[i + 1 + offset_count] = np.sin(np.deg2rad(points[i]))
+                offset_count += 1
+
+        # Index of left side of bin, and don't go over (that's why it's t[:-1] instead of t)
+        inds = [
+            np.searchsorted(t[:-1], x[i]) - 1 for i, t in enumerate(self.gridtuples)
+        ]
+        deltas = np.array(
+            [
+                (x[i] - self.gridtuples[i][j]) / self.binwidth[i][j]
+                for i, j in enumerate(inds)
+            ]
+        )
+        diff = 1 - deltas
+
+        # Set the 'cube' data to be our interpolation data
+        idx = tuple(
+            [
+                slice(
+                    max(min(self.maxbaseinds[j], i), 0),
+                    max(min(self.maxbaseinds[j] + 2, i + 2), 2),
+                )
+                for j, i in enumerate(inds)
+            ]
+        )
+        cube = np.copy(self.gridarrays[idx], order="A")
+
+        for i, di in enumerate(deltas):
+            # Eliminate those indexes where we are outside grid range or exactly on the grid point
+            if x[i] >= self.gridtuples[i][-1]:
+                cube = cube[1]
+            elif x[i] <= self.gridtuples[i][0]:
+                cube = cube[0]
+            # Otherwise eliminate index by linear interpolation
+            else:
+                cube[0] *= diff[i]
+                cube[1] *= di
+                cube[0] += cube[1]
+                cube = cube[0]
+
+        return cube
+
+    def _multilinear_grid_new(self, points):
         """
         Jouni's implementation
 
@@ -272,7 +336,8 @@ class VectorInterpolator:
         elif self.method == 1:
             return self._interpolate(*args, **kwargs)
         elif self.method == 2:
-            return self._multilinear_grid(*args, **kwargs)
+            self._multilinear_grid_old(*args, **kwargs)
+            return self._multilinear_grid_new(*args, **kwargs)
 
 
 def load_wavelen(wavelength_file: str):
