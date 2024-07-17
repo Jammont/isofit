@@ -299,9 +299,11 @@ def optimizedInterp(ds, strat):
         else:
             sel = findSlice(dim, val)
 
+        Logger.debug(f"- Subselecting {key}[{sel.start}:{sel.stop}]")
         ds = ds.isel({key: sel})
 
-    return ds.interp(**strat)
+    Logger.debug("Calling .interp(assume_sorted=True)")
+    return ds.interp(**strat, assume_sorted=True)
 
 
 def sel(ds, dim, lt=None, lte=None, gt=None, gte=None, encompass=True):

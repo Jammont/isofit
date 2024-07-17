@@ -154,6 +154,9 @@ class VectorInterpolator:
         elif version == "mlg":
             self.method = 2
 
+            # self.x = np.zeros((len(grid) + np.sum(lut_interp_types != "n")))
+            # self.cached = self.x
+
             self.gridtuples = [np.array(t) for t in grid]
             self.gridarrays = data
             self.binwidth = [
@@ -195,7 +198,7 @@ class VectorInterpolator:
 
         return res
 
-    def _multilinear_grid(self, points):
+    def _multilinear_grid_old(self, points):
         """
         Jouni's implementation
 
@@ -242,20 +245,20 @@ class VectorInterpolator:
                 for j, i in enumerate(inds)
             ]
         )
-        cube = np.copy(self.gridarrays[idx], order="A")
+        cube = np.copy(self.gridarrays[idx], order="A").T
 
-        for i, di in enumerate(deltas):
+        for i, di in enumerate(deltas[::-1]):
             # Eliminate those indexes where we are outside grid range or exactly on the grid point
-            if x[i] >= self.gridtuples[i][-1]:
-                cube = cube[1]
-            elif x[i] <= self.gridtuples[i][0]:
-                cube = cube[0]
+            if x[-i] <= grid[-i][-1]:
+                cube = cube[:, 1]
+            elif x[-i] >= grid[-i][0]:
+                cube = cube[:, 0]
             # Otherwise eliminate index by linear interpolation
             else:
-                cube[0] *= diff[i]
-                cube[1] *= di
-                cube[0] += cube[1]
-                cube = cube[0]
+                cube[:, 0] *= diff[-i]
+                cube[:, 1] *= di
+                cube[:, 0] += cube[:, 1]
+                cube = cube[:, 0]
 
         return cube
 
