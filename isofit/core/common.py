@@ -27,6 +27,7 @@ from typing import List
 
 import numpy as np
 import scipy.linalg
+import torch
 import torch.jit as jit
 import xxhash
 from scipy.interpolate import RegularGridInterpolator
@@ -102,6 +103,10 @@ class VectorInterpolator(jit.ScriptModule):
             ]  # binwidth arrays for each dimension
             self.maxbaseinds = np.array([len(t) - 1 for t in self.gridtuples])
 
+            self.gridtuples = torch.FloatTensor(grid)
+            self.gridarrays = torch.from_numpy(data)
+            self.maxbaseinds = torch.from_numpy(self.maxbaseinds)
+
         else:
             raise ArgumentError(None, f"Unknown interpolator version: {version!r}")
 
@@ -140,14 +145,14 @@ class VectorInterpolator(jit.ScriptModule):
         # Retrieve which indices to update
         # cached = np.where(points == self.cache["points"])[0]
         # update = set(range(points.size)) - set(cached)
-        update = range(points.size)
+        update = range(len(points))
 
         # Update the cached point
         # self.cache["points"] = points
 
         # Update indices that are different from the last point
         for i in update:
-            j = np.searchsorted(self.gridtuples[i][:-1], points[i]) - 1
+            j = torch.searchsorted(self.gridtuples[i][:-1], points[i]) - 1
             self.cache["deltas"][i] = (
                 points[i] - self.gridtuples[i][j]
             ) / self.binwidth[i][j]
@@ -164,7 +169,7 @@ class VectorInterpolator(jit.ScriptModule):
                     max(min(self.maxbaseinds[i] + 2, j + 2), 2),
                 )
 
-        cube = np.copy(self.gridarrays[tuple(self.cache["idx"])], order="A")
+        cube = torch.copy(self.gridarrays[tuple(self.cache["idx"])], order="A")
 
         # Only linear interpolate sliced dimensions
         for i, idx in enumerate(self.cache["idx"]):
