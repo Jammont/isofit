@@ -103,9 +103,10 @@ class VectorInterpolator(jit.ScriptModule):
             ]  # binwidth arrays for each dimension
             self.maxbaseinds = np.array([len(t) - 1 for t in self.gridtuples])
 
-            self.gridtuples = torch.FloatTensor(grid)
+            self.gridtuples = torch.FloatTensor(self.gridtuples)
             self.gridarrays = torch.from_numpy(data)
             self.maxbaseinds = torch.from_numpy(self.maxbaseinds)
+            self.binwidth = torch.FloatTensor(self.binwidth)
 
         else:
             raise ArgumentError(None, f"Unknown interpolator version: {version!r}")
@@ -150,32 +151,34 @@ class VectorInterpolator(jit.ScriptModule):
         # Update the cached point
         # self.cache["points"] = points
 
+        deltas = [0] * len(points)
+        diff = [0] * len(points)
+        idx = [0] * len(points)
+
         # Update indices that are different from the last point
         for i in update:
             j = torch.searchsorted(self.gridtuples[i][:-1], points[i]) - 1
-            self.cache["deltas"][i] = (
-                points[i] - self.gridtuples[i][j]
-            ) / self.binwidth[i][j]
-            self.cache["diff"][i] = 1 - self.cache["deltas"][i]
+            deltas[i] = (points[i] - self.gridtuples[i][j]) / self.binwidth[i][j]
+            diff[i] = 1 - deltas[i]
 
             # Eliminate indices where it is outside the grid range or on a grid point
             if points[i] >= self.gridtuples[i][-1]:
-                self.cache["idx"][i] = max(min(self.maxbaseinds[i] + 2, j + 2), 2) - 1
+                idx[i] = max(min(self.maxbaseinds[i] + 2, j + 2), 2) - 1
             elif points[i] <= self.gridtuples[i][0]:
-                self.cache["idx"][i] = max(min(self.maxbaseinds[i], j), 0)
+                idx[i] = max(min(self.maxbaseinds[i], j), 0)
             else:
-                self.cache["idx"][i] = slice(
+                idx[i] = slice(
                     max(min(self.maxbaseinds[i], j), 0),
                     max(min(self.maxbaseinds[i] + 2, j + 2), 2),
                 )
 
-        cube = torch.copy(self.gridarrays[tuple(self.cache["idx"])], order="A")
+        cube = torch.copy(self.gridarrays[tuple(idx)], order="A")
 
         # Only linear interpolate sliced dimensions
-        for i, idx in enumerate(self.cache["idx"]):
+        for i, idx in enumerate(idx):
             if isinstance(idx, slice):
-                cube[0] *= self.cache["diff"][i]
-                cube[1] *= self.cache["deltas"][i]
+                cube[0] *= diff[i]
+                cube[1] *= deltas[i]
                 cube[0] += cube[1]
                 cube = cube[0]
 
