@@ -27,6 +27,7 @@ from typing import List
 
 import numpy as np
 import scipy.linalg
+import torch.jit as jit
 import xxhash
 from scipy.interpolate import RegularGridInterpolator
 
@@ -39,7 +40,7 @@ eps = 1e-5
 ### Classes ###
 
 
-class VectorInterpolator:
+class VectorInterpolator(jit.ScriptModule):
     """Linear look up table interpolator.  Support linear interpolation through radial space by expanding the look
     up tables with sin and cos dimensions.
 
@@ -56,6 +57,8 @@ class VectorInterpolator:
         data_input: np.array,
         version="nds-1",
     ):
+        super().__init__()
+
         # Determine if this a singular unique value, if so just return that directly
         val = data_input[(0,) * data_input.ndim]
         if np.isnan(val) and np.isnan(data_input).all() or np.all(data_input == val):
@@ -122,6 +125,7 @@ class VectorInterpolator:
 
         return res
 
+    @jit.script_method
     def _multilinear_grid(self, points):
         """
         Cached version of Jouni's implementation
@@ -134,11 +138,12 @@ class VectorInterpolator:
             cube: np.ndarray
         """
         # Retrieve which indices to update
-        cached = np.where(points == self.cache["points"])[0]
-        update = set(range(points.size)) - set(cached)
+        # cached = np.where(points == self.cache["points"])[0]
+        # update = set(range(points.size)) - set(cached)
+        update = range(points.size)
 
         # Update the cached point
-        self.cache["points"] = points
+        # self.cache["points"] = points
 
         # Update indices that are different from the last point
         for i in update:
