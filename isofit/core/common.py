@@ -41,7 +41,54 @@ eps = 1e-5
 ### Classes ###
 
 
-class VectorInterpolator(jit.ScriptModule):
+@jit.script
+def _multilinear_grid(point, grid, bins, gridlen, data):
+    """
+    JIT version of Jouni's implementation
+
+    Returns:
+        cube: np.ndarray
+    """
+    deltas = torch.FloatTensor([0] * len(point))
+    idx = torch.IntTensor([[0, 0]] * len(point))
+    for i, val in enumerate(point):
+        j = torch.searchsorted(grid[i][:-1], val) - 1
+        deltas[i] = (val - grid[i][j]) / bins[i][j]
+
+        if val >= grid[i][-1]:
+            ind = max(min(gridlen[i] + 2, j + 2), 2) - 1
+            idx[i] = torch.IntTensor([ind, ind])
+        elif val <= grid[i][0]:
+            ind = max(min(gridlen[i], j), 0)
+            idx[i] = torch.IntTensor([ind, ind])
+        else:
+            ind = [
+                max(min(gridlen[i], j), 0),
+                max(min(gridlen[i] + 2, j + 2), 2),
+            ]
+            idx[i] = torch.IntTensor(ind)
+
+    cube = data
+    for i, ind in enumerate(idx):
+        if ind[0] == ind[1]:
+            ind = ind[0]
+        else:
+            ind = torch.arange(ind[0], ind[1])
+        cube = cube.index_select(i, ind)
+
+    cube = cube.squeeze()
+
+    for i, ind in enumerate(idx):
+        if ind[0] != ind[1]:
+            cube[0] *= 1 - deltas[i]
+            cube[1] *= deltas[i]
+            cube[0] += cube[1]
+            cube = cube[0]
+
+    return cube
+
+
+class VectorInterpolator:
     """Linear look up table interpolator.  Support linear interpolation through radial space by expanding the look
     up tables with sin and cos dimensions.
 
@@ -89,12 +136,6 @@ class VectorInterpolator(jit.ScriptModule):
         # Multilinear Grid
         elif version == "mlg":
             self.method = 2
-            self.cache = {
-                "points": [np.nan] * len(grid),
-                "deltas": [np.nan] * len(grid),
-                "diff": [np.nan] * len(grid),
-                "idx": [...] * len(grid),
-            }
 
             self.gridtuples = [np.array(t) for t in grid]
             self.gridarrays = data
@@ -131,58 +172,17 @@ class VectorInterpolator(jit.ScriptModule):
 
         return res
 
-    @jit.script_method
     def _multilinear_grid(self, points):
         """
-        Cached version of Jouni's implementation
-
-        Args:
-            points: The point being interpolated. If at the limit, the extremal value in
-                    the grid is returned.
-
-        Returns:
-            cube: np.ndarray
+        Passthrough to the JIT implementation
         """
-        # Retrieve which indices to update
-        # cached = np.where(points == self.cache["points"])[0]
-        # update = set(range(points.size)) - set(cached)
-        update = range(len(points))
-
-        # Update the cached point
-        # self.cache["points"] = points
-
-        deltas = [0] * len(points)
-        diff = [0] * len(points)
-        idx = [0] * len(points)
-
-        # Update indices that are different from the last point
-        for i in update:
-            j = torch.searchsorted(self.gridtuples[i][:-1], points[i]) - 1
-            deltas[i] = (points[i] - self.gridtuples[i][j]) / self.binwidth[i][j]
-            diff[i] = 1 - deltas[i]
-
-            # Eliminate indices where it is outside the grid range or on a grid point
-            if points[i] >= self.gridtuples[i][-1]:
-                idx[i] = max(min(self.maxbaseinds[i] + 2, j + 2), 2) - 1
-            elif points[i] <= self.gridtuples[i][0]:
-                idx[i] = max(min(self.maxbaseinds[i], j), 0)
-            else:
-                idx[i] = slice(
-                    max(min(self.maxbaseinds[i], j), 0),
-                    max(min(self.maxbaseinds[i] + 2, j + 2), 2),
-                )
-
-        cube = torch.copy(self.gridarrays[tuple(idx)], order="A")
-
-        # Only linear interpolate sliced dimensions
-        for i, idx in enumerate(idx):
-            if isinstance(idx, slice):
-                cube[0] *= diff[i]
-                cube[1] *= deltas[i]
-                cube[0] += cube[1]
-                cube = cube[0]
-
-        return cube
+        return _multilinear_grid(
+            torch.FloatTensor(points),
+            self.gridtuples,
+            self.binwidth,
+            self.maxbaseinds,
+            self.gridarrays,
+        )
 
     def __call__(self, *args, **kwargs):
         """
