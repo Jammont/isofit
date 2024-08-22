@@ -176,13 +176,14 @@ class VectorInterpolator:
         """
         Passthrough to the JIT implementation
         """
-        return _multilinear_grid(
+        interpolation = _multilinear_grid(
             torch.FloatTensor(points),
             self.gridtuples,
             self.binwidth,
             self.maxbaseinds,
             self.gridarrays,
         )
+        return np.array(interpolation)
 
     def __call__(self, *args, **kwargs):
         """
