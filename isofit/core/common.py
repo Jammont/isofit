@@ -32,6 +32,12 @@ import torch.jit as jit
 import xxhash
 from scipy.interpolate import RegularGridInterpolator
 
+### Environment ###
+
+torch.set_num_threads(1)
+torch.set_num_interop_threads(1)
+
+
 ### Variables ###
 
 # small value used in finite difference derivatives
