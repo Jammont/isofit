@@ -58,10 +58,10 @@ def _multilinear_grid(point, grid, bins, gridlen, data):
     deltas = torch.FloatTensor([0] * len(point))
     idx = torch.IntTensor([[0, 0]] * len(point))
     for i, val in enumerate(point):
-        j = torch.searchsorted(grid[i][:-1], val) - 1
+        j = torch.searchsorted(grid[i][: gridlen[i] + 1], val) - 1
         deltas[i] = (val - grid[i][j]) / bins[i][j]
 
-        if val >= grid[i][-1]:
+        if val >= grid[i][gridlen[i]]:
             ind = max(min(gridlen[i] + 2, j + 2), 2) - 1
             idx[i] = torch.IntTensor([ind, ind])
         elif val <= grid[i][0]:
@@ -150,7 +150,13 @@ class VectorInterpolator:
             ]  # binwidth arrays for each dimension
             self.maxbaseinds = np.array([len(t) - 1 for t in self.gridtuples])
 
-            # self.gridtuples = torch.FloatTensor(self.gridtuples)
+            # Resize the grid dimensions to be the same length, right padded with 0
+            gridMax = max(self.gridtuples, key=lambda dim: dim.size).size
+            resized = [
+                np.lib.pad(g, (0, gridMax - dim.size)) for dim in self.gridtuples
+            ]
+            self.gridtuples = torch.FloatTensor(resized)
+
             self.gridarrays = torch.from_numpy(data)
             self.maxbaseinds = torch.from_numpy(self.maxbaseinds)
             self.binwidth = torch.FloatTensor(self.binwidth)
