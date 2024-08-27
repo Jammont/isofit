@@ -150,7 +150,7 @@ class VectorInterpolator:
             ]  # binwidth arrays for each dimension
             self.maxbaseinds = np.array([len(t) - 1 for t in self.gridtuples])
 
-            self.gridtuples = torch.FloatTensor(self.gridtuples)
+            # self.gridtuples = torch.FloatTensor(self.gridtuples)
             self.gridarrays = torch.from_numpy(data)
             self.maxbaseinds = torch.from_numpy(self.maxbaseinds)
             self.binwidth = torch.FloatTensor(self.binwidth)
