@@ -153,13 +153,19 @@ class VectorInterpolator:
             # Resize the grid dimensions to be the same length, right padded with 0
             gridMax = max(self.gridtuples, key=lambda dim: dim.size).size
             resized = [
-                np.lib.pad(g, (0, gridMax - dim.size)) for dim in self.gridtuples
+                np.lib.pad(dim, (0, gridMax - dim.size)) for dim in self.gridtuples
             ]
             self.gridtuples = torch.FloatTensor(resized)
 
             self.gridarrays = torch.from_numpy(data)
             self.maxbaseinds = torch.from_numpy(self.maxbaseinds)
-            self.binwidth = torch.FloatTensor(self.binwidth)
+            # self.binwidth = torch.FloatTensor(self.binwidth)
+
+            gridMax = max(self.binwidth, key=lambda dim: dim.size).size
+            resized = [
+                np.lib.pad(dim, (0, gridMax - dim.size)) for dim in self.binwidth
+            ]
+            self.binwidth = torch.FloatTensor(resized)
 
         else:
             raise ArgumentError(None, f"Unknown interpolator version: {version!r}")
